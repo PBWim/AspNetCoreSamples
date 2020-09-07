@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
 
+using Korzh.EasyQuery;
 using Korzh.EasyQuery.Services;
 using Korzh.EasyQuery.Linq;
 using Korzh.EasyQuery.AspNetCore;
@@ -52,7 +54,17 @@ namespace EqAspNetCoreDemo.Controllers
         public async Task<IActionResult> GetModelAsync(string modelId)
         {
             var model = await _eqManager.GetModelAsync(modelId);
-
+            var op = model.AddUpdateLinqOperator("CustomLinq", "custom linq", "{expr1} [[custom linq]] {expr2}, {expr3}",
+                (left, expressions) => {
+                    var exprList = expressions.ToList();
+                    var rightFirst = exprList.Count > 0 ? exprList[0] : null;
+                    var rightSecond = exprList.Count > 1 ? exprList[1] : null;
+                    return Expression.Or(
+                        Expression.Call(left, typeof(string).GetMethod("StartsWith", new[] { typeof(string) }), expressions.First()),
+                        Expression.Call(left, typeof(string).GetMethod("EndsWith", new[] { typeof(string) }), expressions.Last())
+                        );
+                }, DataKind.Scalar, DataModel.StringOperatorGroup);
+            model.AddOperatorToSuitedAttributes(op);
             return this.EqOk(new { Model = model });
         }
 
